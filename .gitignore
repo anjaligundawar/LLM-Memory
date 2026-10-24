@@ -1,8 +1,9 @@
 __pycache__/
 *.pyc
 .venv/
-data/
-cache/
-results/
-gate_models/
 *.part
+# top-level folders only (a bare "data/" would also hide memhygiene/data/)
+/data/
+/cache/
+/results/
+/gate_models/
