@@ -1,0 +1,41 @@
+# Main grid (Experiments E1-E3). Expect a few hours on a laptop CPU; every
+# finished cell is saved, so you can stop and resume. Run one corpus at a time
+# with:  python scripts/run_grid.py configs/main.yaml --corpora locomo
+out: results/main
+cache_dir: cache
+threads: auto        # all CPU cores; use e.g. 4 per terminal when running datasets in parallel
+embedder:
+  name: sentence-transformers/all-MiniLM-L6-v2
+  batch_size: 64
+  # device: cuda
+nli:
+  model: cross-encoder/nli-MiniLM2-L6-H768   # fast on CPU; cross-encoder/nli-deberta-v3-small is stronger but ~4x slower
+corpora:
+  locomo: {}
+  longmemeval: {max_stores: 60}
+  mab_conflict: {max_queries_per_store: 100}
+  clutrr: {}
+  loghub: {window: 200, max_windows_per_system: 3}
+pollution:
+  types: [irrelevant, duplicate, stale, contradictory, temporary, mixed]
+  levels: [0.0, 0.1, 0.25, 0.5, 0.75]
+  seeds: [0]          # first pass; add 1 and 2 for the final paper run (finished cells are reused)
+  targeted: 0.5
+retrievers: [dense, bm25, hybrid, graph]
+modes: [none, hard, soft, gated]
+ks: [1, 3, 5, 10]
+candidate_pool: 50
+soft_lambda: 0.9
+hygiene:
+  tau_dup: 0.92
+  tau_sup: 0.75
+  tau_cand: 0.65
+  nli_neighbours: 3
+  tau_nli: 0.5
+  tau_info: 0.2
+gate:
+  epsilon: 0.05
+  budget: 0.5
+  max_flag_rate: 0.5
+  # after the first run: python scripts/fit_gate.py results/main gate_models
+  # then set  model_dir: gate_models  and re-run into a new out folder

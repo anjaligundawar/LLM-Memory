@@ -1,0 +1,10 @@
+# Natural junk (Experiment E5): an LLM memory writer builds the store, an LLM
+# annotator labels junk. Uses the Claude API.
+out: results/natural
+cache_dir: cache
+embedder: {name: sentence-transformers/all-MiniLM-L6-v2}
+nli: {model: cross-encoder/nli-MiniLM2-L6-H768}
+llm: {model: claude-opus-5-5, effort: low}
+corpora:
+  locomo: {}
+max_sessions: null

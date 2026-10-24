@@ -1,0 +1,15 @@
+# Hygiene ablation: switch components off one at a time (copy this file per
+# setting, or edit the hygiene block). Mixed junk at 50% only.
+out: results/ablation_no_dedup
+cache_dir: cache
+embedder: {name: sentence-transformers/all-MiniLM-L6-v2}
+nli: {model: cross-encoder/nli-MiniLM2-L6-H768}
+corpora:
+  locomo: {}
+  clutrr: {}
+  loghub: {window: 200, max_windows_per_system: 3}
+  mab_conflict: {max_queries_per_store: 100}
+pollution: {types: [mixed], levels: [0.0, 0.5], seeds: [0, 1, 2]}
+retrievers: [dense, graph]
+modes: [none, hard, gated]
+hygiene: {dedup: false}

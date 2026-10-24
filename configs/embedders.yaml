@@ -1,0 +1,13 @@
+# Robustness check: is the vector-vs-graph result specific to MiniLM?
+# Same grid, stronger embedder, mixed junk only.
+out: results/bge
+cache_dir: cache
+embedder: {name: BAAI/bge-small-en-v1.5}
+nli: {model: cross-encoder/nli-MiniLM2-L6-H768}
+corpora:
+  locomo: {}
+  clutrr: {}
+  loghub: {window: 200, max_windows_per_system: 3}
+pollution: {types: [mixed], levels: [0.0, 0.25, 0.5, 0.75], seeds: [0, 1, 2]}
+retrievers: [dense, hybrid, graph]
+modes: [none, hard, gated]

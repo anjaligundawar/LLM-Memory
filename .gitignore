@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+data/
+cache/
+results/
+gate_models/
+*.part
