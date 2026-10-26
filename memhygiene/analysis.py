@@ -63,7 +63,10 @@ def vector_vs_graph(q: pd.DataFrame, metric: str = "recall@5", a: str = "dense",
     for (c, jt, lvl), g in d[d.level > 0].groupby(["corpus", "jtype", "level"]):
         m = _seed_mean(g, ["retriever"], metric).merge(clean, on=KEY + ["retriever"])
         m["drop"] = m[metric] - m["clean"]
-        w = m.pivot_table(index=KEY, columns="retriever", values="drop").dropna(subset=[a, b]).reset_index()
+        w = m.pivot_table(index=KEY, columns="retriever", values="drop")
+        if a not in w.columns or b not in w.columns:   # e.g. a grid run without the graph retriever
+            continue
+        w = w.dropna(subset=[a, b]).reset_index()
         if w.empty:
             continue
         ci = cluster_bootstrap_diff(w[a].values, w[b].values, w.store.values)
@@ -85,9 +88,12 @@ def hygiene_effect(q: pd.DataFrame, metric: str = "recall@5",
             ci = cluster_bootstrap_diff(x[metric].values, x[f"{metric}_none"].values, x.store.values)
             jk = f"junk@{metric.split('@')[1]}"
             junk_none, junk_mode = x[f"{jk}_none"].mean(), x[jk].mean()
+            if junk_mode > 0:
+                reduction = junk_none / junk_mode
+            else:   # hygiene removed all junk; undefined when there was none to begin with
+                reduction = np.inf if junk_none > 0 else np.nan
             rows.append(dict(corpus=c, retriever=r, jtype=jt, level=lvl, hygiene=mode, **ci, n=len(x),
-                             junk_none=junk_none, junk_mode=junk_mode,
-                             junk_reduction=(junk_none / junk_mode) if junk_mode > 0 else np.inf))
+                             junk_none=junk_none, junk_mode=junk_mode, junk_reduction=reduction))
     return pd.DataFrame(rows)
 
 

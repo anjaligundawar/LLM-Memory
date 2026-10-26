@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from memhygiene.data import load_corpus  # noqa: E402
 from memhygiene.embed import encode_docs, make_embedder  # noqa: E402
 from memhygiene.features import store_features  # noqa: E402
-from memhygiene.hygiene import Gate, HygieneConfig, run_hygiene  # noqa: E402
+from memhygiene.hygiene import HygieneConfig, gate_from_config, run_hygiene  # noqa: E402
 from memhygiene.llm import Claude  # noqa: E402
 from memhygiene.pollution.natural import annotate, write_memories  # noqa: E402
 from memhygiene.runner import _make_nli  # noqa: E402
@@ -34,11 +34,11 @@ if __name__ == "__main__":
     emb = make_embedder(cfg.get("embedder", {}), cache_dir=cache)
     hcfg = HygieneConfig(**cfg.get("hygiene", {}))
     nli = _make_nli(cfg, cache)
-    gate = Gate(**cfg.get("gate", {}))
     llm = Claude(**cfg.get("llm", {}), cache_dir=cache)
     rows, dump = [], []
     for cname, ckw in cfg["corpora"].items():
         corpus = load_corpus(cname, **(ckw or {}))
+        gate = gate_from_config(cfg.get("gate"), cname)
         for store in corpus.stores:
             mems = write_memories(llm, store, cfg.get("max_sessions"))
             if len(mems) < 2:
@@ -46,7 +46,7 @@ if __name__ == "__main__":
             V = encode_docs(emb, [m.text for m in mems])
             labels = annotate(llm, mems, V)
             full = run_hygiene(mems, V, hcfg, nli)
-            gated, _ = gate.apply(full, store_features(mems, V))
+            gated, _ = gate.apply(full, store_features(mems, V, hcfg.tau_dup, hcfg.tau_sup))
             junk = np.array([l != "valid" for l in labels])
             for mode, res in (("full", full), ("gated", gated)):
                 f = res.scores >= 0.5

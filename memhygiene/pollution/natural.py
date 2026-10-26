@@ -68,7 +68,9 @@ def annotate(llm, units: List[MemoryUnit], vectors: np.ndarray, neighbours: int 
     np.fill_diagonal(S, -1)
     labels = []
     for i, u in enumerate(units):
-        nb = np.argsort(-S[i])[:neighbours]
+        # never show the target as one of its own neighbours (happens when the
+        # store has <= `neighbours` memories, since the diagonal only sorts last)
+        nb = [j for j in np.argsort(-S[i]) if j != i][:neighbours]
         ctx = "\n".join(f"- [{datetime.fromtimestamp(units[j].timestamp):%Y-%m-%d}] {units[j].text}"
                         for j in sorted(nb, key=lambda j: units[j].timestamp))
         user = (f"TARGET [{datetime.fromtimestamp(u.timestamp):%Y-%m-%d}]: {u.text}\n\n"

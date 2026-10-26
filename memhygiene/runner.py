@@ -22,8 +22,8 @@ from .data.loghub import routine_lines
 from .embed import encode_docs, encode_queries, make_embedder, set_threads
 from .eval.metrics import query_metrics
 from .features import store_features
-from .hygiene import (Gate, GateModel, HygieneConfig, HygieneResult, combine, hard_keep_mask,
-                      run_hygiene, soft_rerank)
+from .hygiene import (HygieneConfig, HygieneResult, gate_from_config, hard_keep_mask, run_hygiene,
+                      soft_rerank)
 from .pollution import Polluter
 from .retrieval import make_retriever
 
@@ -72,9 +72,6 @@ def run(cfg: dict) -> Path:
     hcfg = HygieneConfig(**cfg.get("hygiene", {}))
     nli = _make_nli(cfg, cache) if hcfg.contradiction else None
     gcfg = cfg.get("gate", {})
-    gate = Gate(epsilon=gcfg.get("epsilon", 0.05), budget=gcfg.get("budget", 0.5),
-                max_flag_rate=gcfg.get("max_flag_rate", 0.5),
-                model=GateModel.load(gcfg["model"]) if gcfg.get("model") else None)
     lam = cfg.get("soft_lambda", 0.9)
     pool = cfg.get("candidate_pool", 50)
     ks = cfg.get("ks", [1, 3, 5, 10])
@@ -86,8 +83,7 @@ def run(cfg: dict) -> Path:
     modes = cfg.get("modes", MODES)
 
     for cname, ckw in cfg["corpora"].items():
-        if gcfg.get("model_dir"):   # leave-one-corpus-out gate models from scripts/fit_gate.py
-            gate.model = GateModel.load(Path(gcfg["model_dir"]) / f"loco_{cname}.json")
+        gate = gate_from_config(gcfg, cname)   # model_dir: leave-one-corpus-out models from fit_gate.py
         corpus = load_corpus(cname, **(ckw or {}))
         print(corpus.summary(), flush=True)
         polluter = Polluter(corpus, targeted=pol.get("targeted", 0.5),
