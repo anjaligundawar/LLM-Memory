@@ -20,7 +20,7 @@ from memhygiene.data import load_corpus  # noqa: E402
 from memhygiene.data.loghub import routine_lines  # noqa: E402
 from memhygiene.embed import encode_docs, encode_queries, make_embedder  # noqa: E402
 from memhygiene.features import store_features  # noqa: E402
-from memhygiene.hygiene import Gate, HygieneConfig, hard_keep_mask, run_hygiene, soft_rerank  # noqa: E402
+from memhygiene.hygiene import HygieneConfig, gate_from_config, hard_keep_mask, run_hygiene, soft_rerank  # noqa: E402
 from memhygiene.llm import Claude  # noqa: E402
 from memhygiene.pollution import Polluter  # noqa: E402
 from memhygiene.reader import answer, judge  # noqa: E402
@@ -36,12 +36,12 @@ if __name__ == "__main__":
     emb = make_embedder(cfg.get("embedder", {}), cache_dir=cache)
     hcfg = HygieneConfig(**cfg.get("hygiene", {}))
     nli = _make_nli(cfg, cache)
-    gate = Gate(**cfg.get("gate", {}))
     llm = Claude(**cfg.get("llm", {}), cache_dir=cache)
     k, rname = cfg.get("k", 10), cfg.get("retriever", "hybrid")
     rows = []
     for cname, ckw in cfg["corpora"].items():
         corpus = load_corpus(cname, **(ckw or {}))
+        gate = gate_from_config(cfg.get("gate"), cname)
         pol = Polluter(corpus, transient_pool=routine_lines(corpus) if cname == "loghub" else None)
         rng = random.Random(0)
         pairs = [(s, q) for s in corpus.stores for q in s.queries if q.answer]
@@ -57,7 +57,7 @@ if __name__ == "__main__":
                 units = ps.units
                 V = encode_docs(emb, [u.text for u in units])
                 full = run_hygiene(units, V, hcfg, nli)
-                gated, _ = gate.apply(full, store_features(units, V))
+                gated, _ = gate.apply(full, store_features(units, V, hcfg.tau_dup, hcfg.tau_sup))
                 keep = hard_keep_mask(full.scores)
                 umap = ps.unit_map()
                 r_all = make_retriever(rname).index(units, V)

@@ -32,6 +32,7 @@ ENT_LABELS = {"PERSON", "ORG", "GPE", "LOC", "FAC", "NORP", "PRODUCT", "EVENT", 
 
 
 _KEY_CACHE: dict = {}
+_KEY_CACHE_MAX = 500_000
 
 
 def extract_keys(texts, use_spacy: bool = True, min_term_len: int = 3):
@@ -41,6 +42,10 @@ def extract_keys(texts, use_spacy: bool = True, min_term_len: int = 3):
     tag = "spacy" if nlp is not None else "regex"
     todo = list(dict.fromkeys(t for t in texts if (tag, t) not in _KEY_CACHE))
     if todo:
+        # make room BEFORE storing this batch, so the keys just computed are kept
+        if len(_KEY_CACHE) + len(todo) > _KEY_CACHE_MAX:
+            _KEY_CACHE.clear()
+            todo = list(dict.fromkeys(texts))
         if nlp is not None:
             ents = [{e.text.lower() for e in doc.ents if e.label_ in ENT_LABELS}
                     for doc in nlp.pipe(todo, batch_size=256)]
@@ -51,10 +56,7 @@ def extract_keys(texts, use_spacy: bool = True, min_term_len: int = 3):
             keys |= {f"t:{w}" for w in tokenize(t) if w not in STOPWORDS and len(w) >= min_term_len
                      and not w.isdigit()}
             _KEY_CACHE[(tag, t)] = frozenset(keys)
-        if len(_KEY_CACHE) > 500_000:
-            _KEY_CACHE.clear()
-    return [_KEY_CACHE[(tag, t)] if (tag, t) in _KEY_CACHE else extract_keys([t], use_spacy, min_term_len)[0]
-            for t in texts]
+    return [_KEY_CACHE[(tag, t)] for t in texts]
 
 
 class GraphRetriever(Retriever):

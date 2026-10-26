@@ -90,3 +90,18 @@ class Gate:
                 s = trimmed
             gated[c] = s
         return combine(gated, comps), on
+
+
+def gate_from_config(gcfg: Optional[dict] = None, corpus: Optional[str] = None) -> Gate:
+    """Build a Gate from a config `gate:` block. Accepts the keys used in
+    configs/main.yaml: epsilon, budget, max_flag_rate, model (one GateModel
+    json) and model_dir (leave-one-corpus-out models from scripts/fit_gate.py,
+    picked by `corpus`; takes precedence over model)."""
+    gcfg = gcfg or {}
+    model = None
+    if gcfg.get("model_dir") and corpus:
+        model = GateModel.load(Path(gcfg["model_dir"]) / f"loco_{corpus}.json")
+    elif gcfg.get("model"):
+        model = GateModel.load(gcfg["model"])
+    return Gate(epsilon=gcfg.get("epsilon", 0.05), budget=gcfg.get("budget", 0.5),
+                max_flag_rate=gcfg.get("max_flag_rate", 0.5), model=model)
